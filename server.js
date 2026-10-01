@@ -28,6 +28,11 @@ http
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(fs.readFileSync(INDEX_FILE));
     }
+    const STATIC = { '/images.jpg': 'image/jpeg', '/icon.jpg': 'image/jpeg' };
+    if (req.method === 'GET' && STATIC[req.url]) {
+      res.writeHead(200, { 'Content-Type': STATIC[req.url], 'Cache-Control': 'max-age=86400' });
+      return res.end(fs.readFileSync(path.join(__dirname, req.url)));
+    }
     if (req.url === '/api/data') {
       if (req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });

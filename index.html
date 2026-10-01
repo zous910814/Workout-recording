@@ -4,21 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>健身记录</title>
+<link rel="icon" type="image/jpeg" href="icon.jpg">
+<link rel="apple-touch-icon" href="icon.jpg">
 <style>
-  :root { --bg:#f5f6f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --accent:#2563eb; --border:#e5e7eb; --danger:#dc2626; }
+  :root { --bg:#fff0f3; --card:#fffafb; --text:#4a3328; --muted:#9a7b78; --accent:#e8708a; --border:#f4c6d0; --danger:#dc2626; --on:#fff; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111418; --card:#1b2027; --text:#e8eaed; --muted:#9aa3ae; --accent:#60a5fa; --border:#2c333c; --danger:#f87171; }
+    :root { --bg:#2a1d22; --card:#382830; --text:#f6e6e9; --muted:#c4a3ab; --accent:#f08fa5; --border:#5a404a; --danger:#f87171; --on:#3a1f28; }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+  body { margin:0; min-height:100vh; color:var(--text);
+    background:linear-gradient(color-mix(in srgb, var(--bg) 30%, transparent), color-mix(in srgb, var(--bg) 30%, transparent)), #f7b6c4 url(images.jpg) center/cover fixed no-repeat; font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+  /* 图片是手机尺寸：宽屏时不放大拉伸，改为完整置中，两侧用同色粉红填满 */
+  @media (min-aspect-ratio: 1/1) {
+    body { background-size:auto, contain; }
+  }
   main { max-width:720px; margin:0 auto; padding:16px; }
-  h1 { font-size:1.4rem; margin:8px 0 16px; }
+  h1 { font-size:1.4rem; margin:8px 0 16px; display:flex; align-items:center; gap:10px; }
+  .logo { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); flex:none;
+    background:#fff url(icon.jpg) center / cover no-repeat; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
   form { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   form .full { grid-column:1/-1; }
   label { display:flex; flex-direction:column; font-size:.8rem; color:var(--muted); gap:4px; }
   input, select { font:inherit; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); width:100%; }
-  button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:#fff; cursor:pointer; }
+  button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:var(--on); cursor:pointer; }
   button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
   button.ghost:hover { color:var(--danger); }
   .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
@@ -37,7 +46,7 @@
   .empty { color:var(--muted); text-align:center; padding:20px 0; }
   .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:16px; }
   .tabs button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:10px 0; }
-  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tabs button.active { background:var(--accent); color:var(--on); border-color:var(--accent); }
   .addrow { display:flex; gap:8px; }
   .addrow button { white-space:nowrap; }
   details.card { padding:0; }
@@ -47,16 +56,26 @@
   summary::after { content:""; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); margin:-4px 2px 0 0; transition:transform .15s; }
   details[open] > summary::after { transform:rotate(-135deg); margin-top:4px; }
   .body { padding:0 16px 16px; border-top:1px solid var(--border); padding-top:14px; }
-  .day h3 { margin-top:14px; }
+  .day { border-bottom:1px solid var(--border); margin-bottom:0; }
+  .day summary { padding:10px 0; font-weight:500; color:var(--muted); font-size:.95rem; }
+  .day[open] > summary { color:var(--text); }
   .backup { text-align:center; margin:8px 0 24px; }
   .backup button:hover { color:var(--accent); }
+  form.setform { display:block; }
+  .setform .date { margin-bottom:10px; }
+  .setrows { counter-reset:n; }
+  .srow, .rowhead { display:grid; grid-template-columns:28px 1fr 1fr 36px; gap:8px; align-items:center; margin-bottom:8px; }
+  .rowhead { font-size:.8rem; color:var(--muted); margin-bottom:4px; }
+  .srow .idx::before { counter-increment:n; content:counter(n); color:var(--muted); font-size:.9rem; }
+  .formbtns { display:grid; grid-template-columns:1fr 1.5fr; gap:10px; margin-top:4px; }
+  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
   .del { text-align:right; margin-top:8px; }
   .del button { color:var(--danger); }
 </style>
 </head>
 <body>
 <main>
-  <h1>🏋️ 健身记录</h1>
+  <h1><span class="logo"></span>健身记录</h1>
 
   <div class="tabs" id="tabs"></div>
   <form class="card addrow" id="addEx">
@@ -133,11 +152,13 @@ function exerciseHTML(name) {
     <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${last.weight} lb × ${last.reps} × ${last.sets || 1}` : '尚无记录'}</span></summary>
     <div class="body">
       <form class="setform" data-ex="${esc(name)}">
-        <label>重量 (lb)<input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" value="${last ? last.weight : ''}"></label>
-        <label>次数<input name="reps" type="number" step="1" min="1" required inputmode="numeric"></label>
-        <label>组数<input name="sets" type="number" step="1" min="1" required inputmode="numeric" value="${last ? last.sets || 1 : 1}"></label>
-        <label class="full">日期<input name="date" type="date" required value="${today()}"></label>
-        <button class="full" type="submit">新增一组</button>
+        <label class="date">日期<input name="date" type="date" required value="${today()}"></label>
+        <div class="rowhead"><span></span><span>重量 (lb)</span><span>次数</span><span></span></div>
+        <div class="setrows">${initialRows(recs).map((s) => setRowHTML(s.weight, s.reps)).join('')}</div>
+        <div class="formbtns">
+          <button type="button" class="secondary" data-addrow>＋ 加一组</button>
+          <button type="submit">保存本次训练</button>
+        </div>
       </form>
       ${recs.length ? progressHTML(recs) + historyHTML(recs) : ''}
       <div class="del"><button class="ghost" data-delex="${esc(name)}">删除此动作</button></div>
@@ -145,16 +166,42 @@ function exerciseHTML(name) {
   </details>`;
 }
 
+// 预填：沿用上次训练的每一组（递增 / 递减组可直接微调）；没有记录则给 4 个空组
+function initialRows(recs) {
+  if (!recs.length) return Array.from({ length: 4 }, () => ({ weight: '', reps: '' }));
+  const lastDate = recs.at(-1).date;
+  const rows = [];
+  recs.filter((r) => r.date === lastDate).forEach((r) => {
+    for (let i = 0; i < (r.sets || 1); i++) rows.push({ weight: r.weight, reps: r.reps });
+  });
+  return rows;
+}
+
+function setRowHTML(weight = '', reps = '') {
+  return `<div class="srow">
+    <span class="idx"></span>
+    <input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" placeholder="lb" value="${weight}">
+    <input name="reps" type="number" step="1" min="1" required inputmode="numeric" placeholder="次" value="${reps}">
+    <button type="button" class="ghost" data-delrow title="移除此组">✕</button>
+  </div>`;
+}
+
 function historyHTML(recs) {
   const best = Math.max(...recs.map((r) => r.weight));
   const byDate = {};
   recs.forEach((r) => (byDate[r.date] ||= []).push(r));
-  return Object.keys(byDate).sort().reverse().map((date) => `
-    <div class="day"><h3>${date}</h3>
-      ${byDate[date].map((s) => `
-        <div class="set"><span>${s.weight} lb × ${s.reps} 次 × ${s.sets || 1} 组${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
+  return Object.keys(byDate).sort().reverse().map((date) => {
+    const ss = byDate[date];
+    const n = ss.reduce((a, s) => a + (s.sets || 1), 0);
+    const key = esc(`${cat}|${recs[0].exercise}|${date}`);
+    return `
+    <details class="day" data-dkey="${key}" ${opened.has(`${cat}|${recs[0].exercise}|${date}`) ? 'open' : ''}>
+      <summary><span>${date}</span><span class="meta">${n} 组 · ${ss.map((s) => s.weight).join(' / ')} lb</span></summary>
+      ${ss.map((s) => `
+        <div class="set"><span>${s.weight} lb × ${s.reps} 次${(s.sets || 1) > 1 ? ` × ${s.sets} 组` : ''}${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
         <button class="ghost" data-del="${s.id}" title="删除">✕</button></div>`).join('')}
-    </div>`).join('');
+    </details>`;
+  }).join('');
 }
 
 function progressHTML(recs) {
@@ -194,8 +241,8 @@ $('tabs').addEventListener('click', (e) => {
 // 记住每个动作的展开 / 收起状态（toggle 事件不会冒泡，所以用 capture）
 $('list').addEventListener('toggle', (e) => {
   const d = e.target;
-  if (!d.dataset || !d.dataset.ex) return;
-  const k = cat + '|' + d.dataset.ex;
+  if (!d.dataset || !(d.dataset.ex || d.dataset.dkey)) return;
+  const k = d.dataset.dkey ? d.dataset.dkey : cat + '|' + d.dataset.ex;
   d.open ? opened.add(k) : opened.delete(k);
 }, true);
 
@@ -214,16 +261,28 @@ $('addEx').addEventListener('submit', (e) => {
 $('list').addEventListener('submit', (e) => {
   e.preventDefault();
   const f = e.target, name = f.dataset.ex;
-  data.records.push({ id: Date.now(), date: f.date.value, category: cat, exercise: name, weight: +f.weight.value, reps: +f.reps.value, sets: +f.sets.value });
+  const base = Date.now();
+  [...f.querySelectorAll('.srow')].forEach((row, i) => {
+    const [w, r] = row.querySelectorAll('input');
+    data.records.push({ id: base + i, date: f.date.value, category: cat, exercise: name, weight: +w.value, reps: +r.value, sets: 1 });
+  });
   save();
   render();
   const nf = [...document.querySelectorAll('.setform')].find((x) => x.dataset.ex === name);
-  if (nf) nf.reps.focus();
+  if (nf) nf.querySelector('.srow input').focus();
 });
 
 $('list').addEventListener('click', (e) => {
   const t = e.target;
-  if (t.dataset.del) {
+  if ('addrow' in t.dataset) {
+    const box = t.closest('form').querySelector('.setrows');
+    const prev = box.lastElementChild?.querySelectorAll('input');
+    box.insertAdjacentHTML('beforeend', setRowHTML(prev ? prev[0].value : '', prev ? prev[1].value : ''));
+    box.lastElementChild.querySelector('input').focus();
+  } else if ('delrow' in t.dataset) {
+    const row = t.closest('.srow');
+    if (row.parentElement.children.length > 1) row.remove();
+  } else if (t.dataset.del) {
     if (!confirm('确定删除这组记录？')) return;
     data.records = data.records.filter((r) => r.id !== +t.dataset.del);
     save(); render();
