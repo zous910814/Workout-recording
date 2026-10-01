@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hans">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>健身紀錄</title>
+<title>健身记录</title>
 <style>
   :root { --bg:#f5f6f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --accent:#2563eb; --border:#e5e7eb; --danger:#dc2626; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#111418; --card:#1b2027; --text:#e8eaed; --muted:#9aa3ae; --accent:#60a5fa; --border:#2c333c; --danger:#f87171; }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,"Microsoft JhengHei",sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
   main { max-width:720px; margin:0 auto; padding:16px; }
   h1 { font-size:1.4rem; margin:8px 0 16px; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
@@ -56,11 +56,11 @@
 </head>
 <body>
 <main>
-  <h1>🏋️ 健身紀錄</h1>
+  <h1>🏋️ 健身记录</h1>
 
   <div class="tabs" id="tabs"></div>
   <form class="card addrow" id="addEx">
-    <input id="newEx" placeholder="新增動作，例如：槓鈴臥推" autocomplete="off">
+    <input id="newEx" placeholder="新增动作，例如：杠铃卧推" autocomplete="off">
     <button type="submit">＋ 新增</button>
   </form>
 
@@ -68,8 +68,8 @@
 
 
   <div class="backup">
-    <button class="ghost" id="export">存檔</button>
-    <button class="ghost" id="import">匯入</button>
+    <button class="ghost" id="export">存档</button>
+    <button class="ghost" id="import">导入</button>
     <input type="file" id="file" accept="application/json,.json" hidden>
   </div>
 </main>
@@ -79,7 +79,7 @@ const $ = (id) => document.getElementById(id);
 const CATS = ['胸', '肩', '背', '腿', '核心'];
 let data = { exercises: {}, records: [] };
 let cat = localStorage.getItem('cat') || CATS[0];
-const opened = new Set(); // 目前展開的 "部位|動作"
+const opened = new Set(); // 当前展开的 "部位|动作"
 
 const today = () => {
   const d = new Date();
@@ -92,7 +92,7 @@ function normalize() {
   CATS.forEach((c) => (data.exercises[c] ||= []));
 }
 
-// 優先使用伺服器的 data.json；連不上時靜默改用瀏覽器本機儲存
+// 优先使用服务器的 data.json；连不上时静默改用浏览器本地存储
 async function load() {
   try {
     data = await (await fetch('/api/data')).json();
@@ -121,7 +121,7 @@ const recsOf = (name) => data.records.filter((r) => r.category === cat && r.exer
 function render() {
   $('tabs').innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === cat ? 'active' : ''}">${c}</button>`).join('');
   const list = data.exercises[cat];
-  $('list').innerHTML = list.length ? list.map(exerciseHTML).join('') : '<div class="empty">這個部位還沒有動作，在下方新增</div>';
+  $('list').innerHTML = list.length ? list.map(exerciseHTML).join('') : '<div class="empty">这个部位还没有动作，在上方新增</div>';
 }
 
 function exerciseHTML(name) {
@@ -130,17 +130,17 @@ function exerciseHTML(name) {
   const key = esc(cat + '|' + name);
   return `
   <details class="card" data-key="${key}" data-ex="${esc(name)}" ${opened.has(cat + '|' + name) ? 'open' : ''}>
-    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${last.weight} lb × ${last.reps} × ${last.sets || 1}` : '尚無紀錄'}</span></summary>
+    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${last.weight} lb × ${last.reps} × ${last.sets || 1}` : '尚无记录'}</span></summary>
     <div class="body">
       <form class="setform" data-ex="${esc(name)}">
         <label>重量 (lb)<input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" value="${last ? last.weight : ''}"></label>
-        <label>次數<input name="reps" type="number" step="1" min="1" required inputmode="numeric"></label>
-        <label>組數<input name="sets" type="number" step="1" min="1" required inputmode="numeric" value="${last ? last.sets || 1 : 1}"></label>
+        <label>次数<input name="reps" type="number" step="1" min="1" required inputmode="numeric"></label>
+        <label>组数<input name="sets" type="number" step="1" min="1" required inputmode="numeric" value="${last ? last.sets || 1 : 1}"></label>
         <label class="full">日期<input name="date" type="date" required value="${today()}"></label>
-        <button class="full" type="submit">新增一組</button>
+        <button class="full" type="submit">新增一组</button>
       </form>
       ${recs.length ? progressHTML(recs) + historyHTML(recs) : ''}
-      <div class="del"><button class="ghost" data-delex="${esc(name)}">刪除此動作</button></div>
+      <div class="del"><button class="ghost" data-delex="${esc(name)}">删除此动作</button></div>
     </div>
   </details>`;
 }
@@ -152,13 +152,13 @@ function historyHTML(recs) {
   return Object.keys(byDate).sort().reverse().map((date) => `
     <div class="day"><h3>${date}</h3>
       ${byDate[date].map((s) => `
-        <div class="set"><span>${s.weight} lb × ${s.reps} 次 × ${s.sets || 1} 組${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
-        <button class="ghost" data-del="${s.id}" title="刪除">✕</button></div>`).join('')}
+        <div class="set"><span>${s.weight} lb × ${s.reps} 次 × ${s.sets || 1} 组${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
+        <button class="ghost" data-del="${s.id}" title="删除">✕</button></div>`).join('')}
     </div>`).join('');
 }
 
 function progressHTML(recs) {
-  // 每天取最大重量畫折線圖
+  // 每天取最大重量画折线图
   const perDay = {};
   recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, r.weight); });
   const pts = Object.entries(perDay);
@@ -171,9 +171,9 @@ function progressHTML(recs) {
     <div class="stats">
       <div><span>最近重量</span><strong>${recs.at(-1).weight} lb</strong></div>
       <div><span>最大重量</span><strong>${max} lb</strong></div>
-      <div><span>總組數</span><strong>${recs.reduce((n, r) => n + (r.sets || 1), 0)}</strong></div>
+      <div><span>总组数</span><strong>${recs.reduce((n, r) => n + (r.sets || 1), 0)}</strong></div>
     </div>
-    <svg viewBox="0 0 600 180" aria-label="重量趨勢圖">
+    <svg viewBox="0 0 600 180" aria-label="重量趋势图">
       <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
       ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="4" fill="var(--accent)"><title>${p[0]}: ${p[1]} lb</title></circle>`).join('')}
       <text x="4" y="${y(max) + 4}" font-size="11" fill="var(--muted)">${max}</text>
@@ -191,7 +191,7 @@ $('tabs').addEventListener('click', (e) => {
   render();
 });
 
-// 記住每個動作的展開 / 收合狀態（toggle 事件不會冒泡，所以用 capture）
+// 记住每个动作的展开 / 收起状态（toggle 事件不会冒泡，所以用 capture）
 $('list').addEventListener('toggle', (e) => {
   const d = e.target;
   if (!d.dataset || !d.dataset.ex) return;
@@ -224,12 +224,12 @@ $('list').addEventListener('submit', (e) => {
 $('list').addEventListener('click', (e) => {
   const t = e.target;
   if (t.dataset.del) {
-    if (!confirm('確定刪除這組紀錄？')) return;
+    if (!confirm('确定删除这组记录？')) return;
     data.records = data.records.filter((r) => r.id !== +t.dataset.del);
     save(); render();
   } else if (t.dataset.delex) {
     const name = t.dataset.delex, n = recsOf(name).length;
-    if (!confirm(`確定刪除「${name}」${n ? `與其 ${n} 筆紀錄` : ''}？`)) return;
+    if (!confirm(`确定删除「${name}」${n ? `与其 ${n} 笔记录` : ''}？`)) return;
     data.exercises[cat] = data.exercises[cat].filter((x) => x !== name);
     data.records = data.records.filter((r) => !(r.category === cat && r.exercise === name));
     opened.delete(cat + '|' + name);
@@ -253,13 +253,13 @@ $('file').addEventListener('change', async () => {
   try {
     const imported = JSON.parse(await file.text());
     if (!Array.isArray(imported.records)) throw 0;
-    if (!confirm('匯入會取代目前所有資料，確定嗎？')) return;
+    if (!confirm('导入会替换当前所有数据，确定吗？')) return;
     data = imported;
     normalize();
     save();
     render();
   } catch {
-    alert('檔案格式不正確');
+    alert('文件格式不正确');
   }
 });
 
