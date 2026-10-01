@@ -43,7 +43,7 @@
   .stats span { display:block; font-size:.75rem; color:var(--muted); }
   .stats strong { font-size:1.15rem; }
   svg { width:100%; height:auto; display:block; margin-top:12px; }
-  .empty { color:var(--muted); text-align:center; padding:20px 0; }
+  .empty { color:var(--text); text-align:center; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:16px; }
   .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:16px; }
   .tabs button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:10px 0; }
   .tabs button.active { background:var(--accent); color:var(--on); border-color:var(--accent); }
@@ -60,6 +60,7 @@
   .day summary { padding:10px 0; font-weight:500; color:var(--muted); font-size:.95rem; }
   .day[open] > summary { color:var(--text); }
   .backup { text-align:center; margin:8px 0 24px; }
+  .backup button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:6px 18px; margin:0 4px; }
   .backup button:hover { color:var(--accent); }
   form.setform { display:block; }
   .setform .date { margin-bottom:10px; }
@@ -255,7 +256,7 @@ $('addEx').addEventListener('submit', (e) => {
   opened.add(cat + '|' + name);
   render();
   const f = [...document.querySelectorAll('.setform')].find((f) => f.dataset.ex === name);
-  if (f) { f.scrollIntoView({ block: 'center' }); f.weight.focus(); }
+  if (f) { f.scrollIntoView({ block: 'center' }); f.querySelector('input[name=weight]').focus(); }
 });
 
 $('list').addEventListener('submit', (e) => {
