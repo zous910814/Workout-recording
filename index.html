@@ -25,6 +25,9 @@
   h1 { font-size:1.4rem; margin:8px 0 16px; display:flex; align-items:center; gap:10px; }
   .logo { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); flex:none;
     background:#fff url(icon.jpg) center / cover no-repeat; }
+  .unitsw { margin-left:auto; display:flex; border:1px solid var(--accent); border-radius:8px; overflow:hidden; background:var(--card); }
+  .unitsw button { background:transparent; color:var(--text); border-radius:0; padding:4px 12px; font-size:.85rem; }
+  .unitsw button.active { background:var(--accent); color:var(--on); }
   .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
   form { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   form .full { grid-column:1/-1; }
@@ -82,7 +85,7 @@
 </head>
 <body>
 <main>
-  <h1><span class="logo"></span>健身记录</h1>
+  <h1><span class="logo"></span>健身记录<span class="unitsw" id="unitsw"><button data-unit="lb">LB</button><button data-unit="kg">KG</button></span></h1>
 
   <div class="tabs" id="tabs"></div>
   <form class="card addrow" id="addEx">
@@ -105,6 +108,11 @@ const $ = (id) => document.getElementById(id);
 const CATS = ['胸', '肩', '背', '手臂', '腿', '核心'];
 let data = { exercises: {}, records: [] };
 let cat = localStorage.getItem('cat') || CATS[0];
+let unit = localStorage.getItem('unit') === 'kg' ? 'kg' : 'lb';
+const LB_PER_KG = 2.20462262;
+const lbOf = (r) => (r.unit === 'kg' ? r.weight * LB_PER_KG : r.weight); // 比较大小统一换成 lb
+// 记录保留输入时的单位，显示时才换算，来回切换不会累积误差
+const dw = (r) => (r.unit === 'kg') === (unit === 'kg') ? r.weight : +(unit === 'kg' ? r.weight / LB_PER_KG : r.weight * LB_PER_KG).toFixed(1);
 const opened = new Set(); // 当前展开的 "部位|动作"
 
 const today = () => {
@@ -145,6 +153,7 @@ function esc(s) {
 const recsOf = (name) => data.records.filter((r) => r.category === cat && r.exercise === name);
 
 function render() {
+  document.querySelectorAll('#unitsw button').forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
   $('tabs').innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === cat ? 'active' : ''}">${c}</button>`).join('');
   const list = data.exercises[cat];
   $('list').innerHTML = list.length ? list.map(exerciseHTML).join('') : '<div class="empty">这个部位还没有动作，在上方新增</div>';
@@ -156,11 +165,11 @@ function exerciseHTML(name) {
   const key = esc(cat + '|' + name);
   return `
   <details class="card" data-key="${key}" data-ex="${esc(name)}" ${opened.has(cat + '|' + name) ? 'open' : ''}>
-    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${last.weight} lb × ${last.reps} × ${last.sets || 1}` : '尚无记录'}</span></summary>
+    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${sessionSummary(recs.filter((r) => r.date === last.date))}` : '尚无记录'}</span></summary>
     <div class="body">
       <form class="setform" data-ex="${esc(name)}">
         <label class="date">日期<input name="date" type="date" required value="${today()}"></label>
-        <div class="rowhead"><span></span><span>重量 (lb)</span><span>次数</span><span></span></div>
+        <div class="rowhead"><span></span><span>重量 (${unit})</span><span>次数</span><span></span></div>
         <div class="setrows">${initialRows(recs).map((s) => setRowHTML(s.weight, s.reps)).join('')}</div>
         <div class="formbtns">
           <button type="button" class="secondary" data-addrow>＋ 加一组</button>
@@ -179,7 +188,7 @@ function initialRows(recs) {
   const lastDate = recs.at(-1).date;
   const rows = [];
   recs.filter((r) => r.date === lastDate).forEach((r) => {
-    for (let i = 0; i < (r.sets || 1); i++) rows.push({ weight: r.weight, reps: r.reps });
+    for (let i = 0; i < (r.sets || 1); i++) rows.push({ weight: dw(r), reps: r.reps });
   });
   return rows;
 }
@@ -187,25 +196,30 @@ function initialRows(recs) {
 function setRowHTML(weight = '', reps = '') {
   return `<div class="srow">
     <span class="idx"></span>
-    <input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" placeholder="lb" value="${weight}">
+    <input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" placeholder="${unit}" value="${weight}">
     <input name="reps" type="number" step="1" min="1" required inputmode="numeric" placeholder="次" value="${reps}">
     <button type="button" class="ghost" data-delrow title="移除此组">✕</button>
   </div>`;
 }
 
+// 一次训练的摘要，如 "4 组 · 25 / 25 / 25 / 20 lb"，收起的卡片与日期列共用
+function sessionSummary(ss) {
+  const n = ss.reduce((a, s) => a + (s.sets || 1), 0);
+  return `${n} 组 · ${ss.map(dw).join(' / ')} ${unit}`;
+}
+
 function historyHTML(recs) {
-  const best = Math.max(...recs.map((r) => r.weight));
+  const best = Math.max(...recs.map(lbOf));
   const byDate = {};
   recs.forEach((r) => (byDate[r.date] ||= []).push(r));
   return Object.keys(byDate).sort().reverse().map((date) => {
     const ss = byDate[date];
-    const n = ss.reduce((a, s) => a + (s.sets || 1), 0);
     const key = esc(`${cat}|${recs[0].exercise}|${date}`);
     return `
     <details class="day" data-dkey="${key}" ${opened.has(`${cat}|${recs[0].exercise}|${date}`) ? 'open' : ''}>
-      <summary><span>${date}</span><span class="meta">${n} 组 · ${ss.map((s) => s.weight).join(' / ')} lb</span></summary>
+      <summary><span>${date}</span><span class="meta">${sessionSummary(ss)}</span></summary>
       ${ss.map((s) => `
-        <div class="set"><span>${s.weight} lb × ${s.reps} 次${(s.sets || 1) > 1 ? ` × ${s.sets} 组` : ''}${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
+        <div class="set"><span>${dw(s)} ${unit} × ${s.reps} 次${(s.sets || 1) > 1 ? ` × ${s.sets} 组` : ''}${lbOf(s) === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
         <button class="ghost" data-del="${s.id}" title="删除">✕</button></div>`).join('')}
     </details>`;
   }).join('');
@@ -214,7 +228,7 @@ function historyHTML(recs) {
 function progressHTML(recs) {
   // 每天取最大重量画折线图
   const perDay = {};
-  recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, r.weight); });
+  recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, dw(r)); });
   const pts = Object.entries(perDay);
   const ws = pts.map((p) => p[1]);
   const min = Math.min(...ws), max = Math.max(...ws), span = max - min || 1;
@@ -223,19 +237,27 @@ function progressHTML(recs) {
   const line = pts.map((p, i) => `${x(i)},${y(p[1])}`).join(' ');
   return `
     <div class="stats">
-      <div><span>最近重量</span><strong>${recs.at(-1).weight} lb</strong></div>
-      <div><span>最大重量</span><strong>${max} lb</strong></div>
+      <div><span>最近重量</span><strong>${dw(recs.at(-1))} ${unit}</strong></div>
+      <div><span>最大重量</span><strong>${max} ${unit}</strong></div>
       <div><span>总组数</span><strong>${recs.reduce((n, r) => n + (r.sets || 1), 0)}</strong></div>
     </div>
     <svg viewBox="0 0 600 180" aria-label="重量趋势图">
       <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
-      ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="4" fill="var(--accent)"><title>${p[0]}: ${p[1]} lb</title></circle>`).join('')}
+      ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="4" fill="var(--accent)"><title>${p[0]}: ${p[1]} ${unit}</title></circle>`).join('')}
       <text x="4" y="${y(max) + 4}" font-size="11" fill="var(--muted)">${max}</text>
       <text x="4" y="${y(min) + 4}" font-size="11" fill="var(--muted)">${min}</text>
       <text x="30" y="175" font-size="11" fill="var(--muted)">${pts[0][0]}</text>
       <text x="570" y="175" font-size="11" fill="var(--muted)" text-anchor="end">${pts.at(-1)[0]}</text>
     </svg>`;
 }
+
+$('unitsw').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  unit = b.dataset.unit;
+  try { localStorage.setItem('unit', unit); } catch {}
+  render();
+});
 
 $('tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-cat]');
@@ -272,7 +294,7 @@ $('list').addEventListener('submit', (e) => {
   const base = Date.now();
   [...f.querySelectorAll('.srow')].forEach((row, i) => {
     const [w, r] = row.querySelectorAll('input');
-    data.records.push({ id: base + i, date: f.date.value, category: cat, exercise: name, weight: +w.value, reps: +r.value, sets: 1 });
+    data.records.push({ id: base + i, date: f.date.value, category: cat, exercise: name, weight: +w.value, unit, reps: +r.value, sets: 1 });
   });
   save();
   render();
