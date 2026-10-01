@@ -51,6 +51,7 @@
   .backup { text-align:center; margin:8px 0 24px; }
   .backup button:hover { color:var(--accent); }
   .del { text-align:right; margin-top:8px; }
+  .del button { color:var(--danger); }
 </style>
 </head>
 <body>
@@ -67,8 +68,8 @@
 
 
   <div class="backup">
-    <button class="ghost" id="export">匯出 JSON</button>
-    <button class="ghost" id="import">匯入 JSON</button>
+    <button class="ghost" id="export">存檔</button>
+    <button class="ghost" id="import">匯入</button>
     <input type="file" id="file" accept="application/json,.json" hidden>
   </div>
 </main>
