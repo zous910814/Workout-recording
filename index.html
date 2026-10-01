@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>健身紀錄</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --accent:#2563eb; --border:#e5e7eb; --danger:#dc2626; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1b2027; --text:#e8eaed; --muted:#9aa3ae; --accent:#60a5fa; --border:#2c333c; --danger:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,"Microsoft JhengHei",sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.4rem; margin:8px 0 16px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+  form { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  form .full { grid-column:1/-1; }
+  label { display:flex; flex-direction:column; font-size:.8rem; color:var(--muted); gap:4px; }
+  input, select { font:inherit; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); width:100%; }
+  button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
+  button.ghost:hover { color:var(--danger); }
+  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
+  .toolbar select { max-width:220px; }
+  .day { margin-bottom:16px; }
+  .day h3 { margin:0 0 6px; font-size:.95rem; color:var(--muted); }
+  .ex { margin-bottom:8px; }
+  .ex b { display:block; }
+  .set { display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); }
+  .pr { color:#d97706; font-size:.8rem; margin-left:6px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center; }
+  .stats div { background:var(--bg); border-radius:8px; padding:8px; }
+  .stats span { display:block; font-size:.75rem; color:var(--muted); }
+  .stats strong { font-size:1.15rem; }
+  svg { width:100%; height:auto; display:block; margin-top:12px; }
+  .empty { color:var(--muted); text-align:center; padding:20px 0; }
+  .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:16px; }
+  .tabs button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:10px 0; }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .addrow { display:flex; gap:8px; }
+  .addrow button { white-space:nowrap; }
+  details.card { padding:0; }
+  summary { display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; list-style:none; font-weight:600; }
+  summary::-webkit-details-marker { display:none; }
+  summary .meta { margin-left:auto; font-weight:400; font-size:.85rem; color:var(--muted); }
+  summary::after { content:""; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); margin:-4px 2px 0 0; transition:transform .15s; }
+  details[open] > summary::after { transform:rotate(-135deg); margin-top:4px; }
+  .body { padding:0 16px 16px; border-top:1px solid var(--border); padding-top:14px; }
+  .day h3 { margin-top:14px; }
+  .backup { text-align:center; margin:8px 0 24px; }
+  .backup button:hover { color:var(--accent); }
+  .del { text-align:right; margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏋️ 健身紀錄</h1>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
+
+  <form class="card addrow" id="addEx">
+    <input id="newEx" placeholder="新增動作，例如：槓鈴臥推" autocomplete="off">
+    <button type="submit">＋ 新增</button>
+  </form>
+
+  <div class="backup">
+    <button class="ghost" id="export">匯出 JSON</button>
+    <button class="ghost" id="import">匯入 JSON</button>
+    <input type="file" id="file" accept="application/json,.json" hidden>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const CATS = ['胸', '肩', '背', '腿', '核心'];
+let data = { exercises: {}, records: [] };
+let cat = localStorage.getItem('cat') || CATS[0];
+const opened = new Set(); // 目前展開的 "部位|動作"
+
+const today = () => {
+  const d = new Date();
+  return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+function normalize() {
+  data.records ||= [];
+  data.exercises ||= {};
+  CATS.forEach((c) => (data.exercises[c] ||= []));
+}
+
+// 優先使用伺服器的 data.json；連不上時靜默改用瀏覽器本機儲存
+async function load() {
+  try {
+    data = await (await fetch('/api/data')).json();
+  } catch {
+    try { data = JSON.parse(localStorage.getItem('data')) || data; } catch {}
+  }
+  normalize();
+  render();
+}
+
+async function save() {
+  try {
+    const r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!r.ok) throw 0;
+  } catch {
+    try { localStorage.setItem('data', JSON.stringify(data)); } catch {}
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const recsOf = (name) => data.records.filter((r) => r.category === cat && r.exercise === name);
+
+function render() {
+  $('tabs').innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === cat ? 'active' : ''}">${c}</button>`).join('');
+  const list = data.exercises[cat];
+  $('list').innerHTML = list.length ? list.map(exerciseHTML).join('') : '<div class="empty">這個部位還沒有動作，在下方新增</div>';
+}
+
+function exerciseHTML(name) {
+  const recs = recsOf(name).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const last = recs.at(-1);
+  const key = esc(cat + '|' + name);
+  return `
+  <details class="card" data-key="${key}" data-ex="${esc(name)}" ${opened.has(cat + '|' + name) ? 'open' : ''}>
+    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${last.weight} lb × ${last.reps} × ${last.sets || 1}` : '尚無紀錄'}</span></summary>
+    <div class="body">
+      <form class="setform" data-ex="${esc(name)}">
+        <label>重量 (lb)<input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" value="${last ? last.weight : ''}"></label>
+        <label>次數<input name="reps" type="number" step="1" min="1" required inputmode="numeric"></label>
+        <label>組數<input name="sets" type="number" step="1" min="1" required inputmode="numeric" value="${last ? last.sets || 1 : 1}"></label>
+        <label class="full">日期<input name="date" type="date" required value="${today()}"></label>
+        <button class="full" type="submit">新增一組</button>
+      </form>
+      ${recs.length ? progressHTML(recs) + historyHTML(recs) : ''}
+      <div class="del"><button class="ghost" data-delex="${esc(name)}">刪除此動作</button></div>
+    </div>
+  </details>`;
+}
+
+function historyHTML(recs) {
+  const best = Math.max(...recs.map((r) => r.weight));
+  const byDate = {};
+  recs.forEach((r) => (byDate[r.date] ||= []).push(r));
+  return Object.keys(byDate).sort().reverse().map((date) => `
+    <div class="day"><h3>${date}</h3>
+      ${byDate[date].map((s) => `
+        <div class="set"><span>${s.weight} lb × ${s.reps} 次 × ${s.sets || 1} 組${s.weight === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
+        <button class="ghost" data-del="${s.id}" title="刪除">✕</button></div>`).join('')}
+    </div>`).join('');
+}
+
+function progressHTML(recs) {
+  // 每天取最大重量畫折線圖
+  const perDay = {};
+  recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, r.weight); });
+  const pts = Object.entries(perDay);
+  const ws = pts.map((p) => p[1]);
+  const min = Math.min(...ws), max = Math.max(...ws), span = max - min || 1;
+  const x = (i) => 30 + (pts.length === 1 ? 270 : (i * 540) / (pts.length - 1));
+  const y = (w) => 150 - ((w - min) / span) * 120;
+  const line = pts.map((p, i) => `${x(i)},${y(p[1])}`).join(' ');
+  return `
+    <div class="stats">
+      <div><span>最近重量</span><strong>${recs.at(-1).weight} lb</strong></div>
+      <div><span>最大重量</span><strong>${max} lb</strong></div>
+      <div><span>總組數</span><strong>${recs.reduce((n, r) => n + (r.sets || 1), 0)}</strong></div>
+    </div>
+    <svg viewBox="0 0 600 180" aria-label="重量趨勢圖">
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+      ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="4" fill="var(--accent)"><title>${p[0]}: ${p[1]} lb</title></circle>`).join('')}
+      <text x="4" y="${y(max) + 4}" font-size="11" fill="var(--muted)">${max}</text>
+      <text x="4" y="${y(min) + 4}" font-size="11" fill="var(--muted)">${min}</text>
+      <text x="30" y="175" font-size="11" fill="var(--muted)">${pts[0][0]}</text>
+      <text x="570" y="175" font-size="11" fill="var(--muted)" text-anchor="end">${pts.at(-1)[0]}</text>
+    </svg>`;
+}
+
+$('tabs').addEventListener('click', (e) => {
+  const c = e.target.dataset.cat;
+  if (!c) return;
+  cat = c;
+  try { localStorage.setItem('cat', cat); } catch {}
+  render();
+});
+
+// 記住每個動作的展開 / 收合狀態（toggle 事件不會冒泡，所以用 capture）
+$('list').addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (!d.dataset || !d.dataset.ex) return;
+  const k = cat + '|' + d.dataset.ex;
+  d.open ? opened.add(k) : opened.delete(k);
+}, true);
+
+$('addEx').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = $('newEx').value.trim();
+  if (!name) return;
+  if (!data.exercises[cat].includes(name)) { data.exercises[cat].push(name); save(); }
+  $('newEx').value = '';
+  opened.add(cat + '|' + name);
+  render();
+  const f = [...document.querySelectorAll('.setform')].find((f) => f.dataset.ex === name);
+  if (f) { f.scrollIntoView({ block: 'center' }); f.weight.focus(); }
+});
+
+$('list').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target, name = f.dataset.ex;
+  data.records.push({ id: Date.now(), date: f.date.value, category: cat, exercise: name, weight: +f.weight.value, reps: +f.reps.value, sets: +f.sets.value });
+  save();
+  render();
+  const nf = [...document.querySelectorAll('.setform')].find((x) => x.dataset.ex === name);
+  if (nf) nf.reps.focus();
+});
+
+$('list').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.dataset.del) {
+    if (!confirm('確定刪除這組紀錄？')) return;
+    data.records = data.records.filter((r) => r.id !== +t.dataset.del);
+    save(); render();
+  } else if (t.dataset.delex) {
+    const name = t.dataset.delex, n = recsOf(name).length;
+    if (!confirm(`確定刪除「${name}」${n ? `與其 ${n} 筆紀錄` : ''}？`)) return;
+    data.exercises[cat] = data.exercises[cat].filter((x) => x !== name);
+    data.records = data.records.filter((r) => !(r.category === cat && r.exercise === name));
+    opened.delete(cat + '|' + name);
+    save(); render();
+  }
+});
+
+$('export').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = 'workout-data.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('import').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', async () => {
+  const file = $('file').files[0];
+  $('file').value = '';
+  if (!file) return;
+  try {
+    const imported = JSON.parse(await file.text());
+    if (!Array.isArray(imported.records)) throw 0;
+    if (!confirm('匯入會取代目前所有資料，確定嗎？')) return;
+    data = imported;
+    normalize();
+    save();
+    render();
+  } catch {
+    alert('檔案格式不正確');
+  }
+});
+
+load();
+</script>
+</body>
+</html>
