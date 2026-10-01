@@ -12,11 +12,14 @@
     :root { --bg:#2a1d22; --card:#382830; --text:#f6e6e9; --muted:#c4a3ab; --accent:#f08fa5; --border:#5a404a; --danger:#f87171; --on:#3a1f28; }
   }
   * { box-sizing: border-box; }
-  body { margin:0; min-height:100vh; color:var(--text);
-    background:linear-gradient(color-mix(in srgb, var(--bg) 30%, transparent), color-mix(in srgb, var(--bg) 30%, transparent)), #f7b6c4 url(images.jpg) center/cover fixed no-repeat; font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+  html { background:#f7b6c4; }
+  body { margin:0; min-height:100vh; color:var(--text); font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+  /* 背景放在固定的独立图层，展开 / 收起内容时页面高度变化也不会让图片缩放 */
+  body::before { content:""; position:fixed; left:0; top:0; width:100%; height:100lvh; z-index:-1;
+    background:linear-gradient(color-mix(in srgb, var(--bg) 30%, transparent), color-mix(in srgb, var(--bg) 30%, transparent)), url(images.jpg) center/cover no-repeat; }
   /* 图片是手机尺寸：宽屏时不放大拉伸，改为完整置中，两侧用同色粉红填满 */
   @media (min-aspect-ratio: 1/1) {
-    body { background-size:auto, contain; }
+    body::before { background-size:auto, contain; }
   }
   main { max-width:720px; margin:0 auto; padding:16px; }
   h1 { font-size:1.4rem; margin:8px 0 16px; display:flex; align-items:center; gap:10px; }
@@ -26,6 +29,9 @@
   form { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   form .full { grid-column:1/-1; }
   label { display:flex; flex-direction:column; font-size:.8rem; color:var(--muted); gap:4px; }
+  label { min-width:0; }
+  input[type=date] { -webkit-appearance:none; appearance:none; min-width:0; max-width:100%; min-height:42px; text-align:left; }
+  input[type=date]::-webkit-date-and-time-value { text-align:left; }
   input, select { font:inherit; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); width:100%; }
   button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:var(--on); cursor:pointer; }
   button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
@@ -232,7 +238,8 @@ function progressHTML(recs) {
 }
 
 $('tabs').addEventListener('click', (e) => {
-  const c = e.target.dataset.cat;
+  const btn = e.target.closest('[data-cat]');
+  const c = btn && btn.dataset.cat;
   if (!c) return;
   cat = c;
   try { localStorage.setItem('cat', cat); } catch {}
@@ -274,7 +281,8 @@ $('list').addEventListener('submit', (e) => {
 });
 
 $('list').addEventListener('click', (e) => {
-  const t = e.target;
+  const t = e.target.closest('button');
+  if (!t) return;
   if ('addrow' in t.dataset) {
     const box = t.closest('form').querySelector('.setrows');
     const prev = box.lastElementChild?.querySelectorAll('input');
