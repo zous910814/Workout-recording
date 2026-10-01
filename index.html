@@ -50,7 +50,7 @@
   .stats strong { font-size:1.15rem; }
   svg { width:100%; height:auto; display:block; margin-top:12px; }
   .empty { color:var(--text); text-align:center; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:16px; }
-  .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:16px; }
   .tabs button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:10px 0; }
   .tabs button.active { background:var(--accent); color:var(--on); border-color:var(--accent); }
   .addrow { display:flex; gap:8px; }
@@ -102,7 +102,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const CATS = ['胸', '肩', '背', '腿', '核心'];
+const CATS = ['胸', '肩', '背', '手臂', '腿', '核心'];
 let data = { exercises: {}, records: [] };
 let cat = localStorage.getItem('cat') || CATS[0];
 const opened = new Set(); // 当前展开的 "部位|动作"
