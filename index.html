@@ -215,8 +215,9 @@
     background:var(--accent); border:3px solid #fff; margin-top:-5px; box-shadow:0 2px 6px rgba(0,0,0,.5); }
   .hue::-moz-range-thumb { width:22px; height:22px; border-radius:50%; box-sizing:border-box;
     background:var(--accent); border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.5); }
-  .presets { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-  .presets button { width:30px; height:30px; border-radius:50%; cursor:pointer;
+  /* 固定四栏：交给 flex-wrap 决定会变成 5 + 3 */
+  .presets { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+  .presets button { width:100%; aspect-ratio:1; border-radius:50%; cursor:pointer;
     border:2px solid var(--edge); padding:0; }
 
   @media (prefers-reduced-motion:reduce) {
