@@ -2,110 +2,285 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a1a1f">
 <title>健身记录</title>
 <link rel="icon" type="image/jpeg" href="icon.jpg">
 <link rel="apple-touch-icon" href="icon.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap">
 <style>
-  :root { --bg:#fff0f3; --card:#fffafb; --text:#4a3328; --muted:#9a7b78; --accent:#e8708a; --border:#f4c6d0; --danger:#dc2626; --on:#fff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#2a1d22; --card:#382830; --text:#f6e6e9; --muted:#c4a3ab; --accent:#f08fa5; --border:#5a404a; --danger:#f87171; --on:#3a1f28; }
+  :root {
+    color-scheme: dark; /* 让日期选择器 / 下拉这些原生控件也跟着深色 */
+    --h:4;                                  /* 主色相，由顶栏的配色钮调整 */
+    --a-card:.62; --a-surface:.78; --a-sheet:.92;
+    --edge:rgba(255,255,255,.16);
+    --brass:#e0a93f;                        /* 破纪录标记固定是金色，不跟着主色跑 */
+    --danger:#ff9a9a;
+    --blur:18px; --r:14px;
+    /* 不支持 oklch 时固定成默认的深粉（配色钮会自动隐藏） */
+    --shell:#2a1a1f; --card-solid:#3c262e;
+    --card:rgb(60 38 46 / var(--a-card));
+    --surface:rgb(78 53 64 / var(--a-surface));
+    --sheet:rgb(46 29 35 / var(--a-sheet));
+    --wash:rgb(26 15 19 / .74);
+    --ink:#f6e6e9; --clay:#c4a3ab; --accent:#e8628a; --on:#2a1a1f;
   }
-  * { box-sizing: border-box; }
-  html { background:#f7b6c4; }
-  body { margin:0; min-height:100vh; color:var(--text); font:16px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+  /* oklch 的亮度是感知亮度：色相转到哪里，文字与底色的对比都不会塌 */
+  @supports (color: oklch(50% .1 0)) {
+    :root {
+      --shell:oklch(22% .03 var(--h));
+      --card-solid:oklch(31% .04 var(--h));  /* 折线图的圆点挖空处不能是半透明 */
+      --card:oklch(31% .04 var(--h) / var(--a-card));
+      --surface:oklch(38% .04 var(--h) / var(--a-surface));
+      --sheet:oklch(26% .035 var(--h) / var(--a-sheet));
+      --wash:oklch(18% .025 var(--h) / .74);
+      --ink:oklch(94% .02 var(--h));
+      --clay:oklch(76% .03 var(--h));
+      --accent:oklch(76% .14 var(--h));
+      --on:oklch(20% .03 var(--h));
+    }
+  }
+  /* 不支持 backdrop-filter 时，半透明卡片会被背景图穿透、字就读不了，退回接近不透明 */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+    :root { --a-card:.94; --a-surface:.97; --a-sheet:.99; }
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--shell); }
+  /* 数字走 Archivo，汉字自动落回系统字体——Archivo 没有汉字，浏览器会自己分工 */
+  body { margin:0; min-height:100svh; color:var(--ink);
+    font:16px/1.5 Archivo,system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-variant-numeric:tabular-nums; -webkit-text-size-adjust:100%; }
   /* 背景放在固定的独立图层，展开 / 收起内容时页面高度变化也不会让图片缩放 */
-  body::before { content:""; position:fixed; left:0; top:0; width:100%; height:100lvh; z-index:-1;
-    background:linear-gradient(color-mix(in srgb, var(--bg) 30%, transparent), color-mix(in srgb, var(--bg) 30%, transparent)), url(images.jpg) center/cover no-repeat; }
-  /* 图片是手机尺寸：宽屏时不放大拉伸，改为完整置中，两侧用同色粉红填满 */
-  @media (min-aspect-ratio: 1/1) {
-    body::before { background-size:auto, contain; }
-  }
-  main { max-width:720px; margin:0 auto; padding:16px; }
-  h1 { font-size:1.4rem; margin:8px 0 16px; display:flex; align-items:center; gap:10px; }
-  .logo { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); flex:none;
-    background:#fff url(icon.jpg) center / cover no-repeat; }
-  .unitsw { margin-left:auto; display:flex; border:1px solid var(--accent); border-radius:8px; overflow:hidden; background:var(--card); }
-  .unitsw button { background:transparent; color:var(--text); border-radius:0; padding:4px 12px; font-size:.85rem; }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; background-color:var(--shell);
+    background-image:linear-gradient(var(--wash),var(--wash)),url(images.jpg);
+    background-position:center; background-size:cover; background-repeat:no-repeat; }
+  /* 图片是手机尺寸：宽屏时不放大拉伸，改为完整置中，两侧用同色填满 */
+  @media (min-aspect-ratio:1/1) { body::before { background-size:auto,contain; } }
+
+  main { max-width:480px; margin:0 auto; padding:0 0 32px; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ── 顶栏 ── */
+  .topbar { display:flex; align-items:center; gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px; }
+  .logo { width:36px; height:36px; border-radius:50%; flex:none; border:2px solid var(--accent);
+    background:#fff url(icon.jpg) center/cover no-repeat; }
+  .topbar h1 { margin:0; font-size:20px; line-height:28px; font-weight:700; }
+  .unitsw { margin-left:auto; display:flex; border:1px solid var(--accent); border-radius:999px; overflow:hidden; }
+  .unitsw button { background:transparent; color:var(--accent); border:0; cursor:pointer;
+    font:inherit; font-size:12px; font-weight:600; padding:7px 13px; }
   .unitsw button.active { background:var(--accent); color:var(--on); }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
-  form { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
-  form .full { grid-column:1/-1; }
-  label { display:flex; flex-direction:column; font-size:.8rem; color:var(--muted); gap:4px; }
-  label { min-width:0; }
-  input[type=date] { -webkit-appearance:none; appearance:none; min-width:0; max-width:100%; min-height:42px; text-align:left; }
-  input[type=date]::-webkit-date-and-time-value { text-align:left; }
-  input, select { font:inherit; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); width:100%; }
-  button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:var(--on); cursor:pointer; }
-  button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
-  button.ghost:hover { color:var(--danger); }
-  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
-  .toolbar select { max-width:220px; }
-  .day { margin-bottom:16px; }
-  .day h3 { margin:0 0 6px; font-size:.95rem; color:var(--muted); }
-  .ex { margin-bottom:8px; }
-  .ex b { display:block; }
-  .set { display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); }
-  .pr { color:#d97706; font-size:.8rem; margin-left:6px; }
-  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center; }
-  .stats div { background:var(--bg); border-radius:8px; padding:8px; }
-  .stats span { display:block; font-size:.75rem; color:var(--muted); }
-  .stats strong { font-size:1.15rem; }
-  svg { width:100%; height:auto; display:block; margin-top:12px; }
-  .empty { color:var(--text); text-align:center; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:16px; }
-  .tabs { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:16px; }
-  .tabs button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:10px 0; }
-  .tabs button.active { background:var(--accent); color:var(--on); border-color:var(--accent); }
-  .addrow { display:flex; gap:8px; }
-  .addrow button { white-space:nowrap; }
-  details.card { padding:0; }
-  summary { display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; list-style:none; font-weight:600; }
-  summary::-webkit-details-marker { display:none; }
-  summary .meta { margin-left:auto; font-weight:400; font-size:.85rem; color:var(--muted); }
-  summary::after { content:""; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); margin:-4px 2px 0 0; transition:transform .15s; }
-  details[open] > summary::after { transform:rotate(-135deg); margin-top:4px; }
-  .body { padding:0 16px 16px; border-top:1px solid var(--border); padding-top:14px; }
-  .day { border-bottom:1px solid var(--border); margin-bottom:0; }
-  .day summary { padding:10px 0; font-weight:500; color:var(--muted); font-size:.95rem; }
-  .day[open] > summary { color:var(--text); }
-  .backup { text-align:center; margin:8px 0 24px; }
-  .backup button { background:var(--card); color:var(--text); border:1px solid var(--border); padding:6px 18px; margin:0 4px; }
-  .backup button:hover { color:var(--accent); }
-  form.setform { display:block; }
-  .setform .date { margin-bottom:10px; }
-  .setrows { counter-reset:n; }
-  .srow, .rowhead { display:grid; grid-template-columns:28px 1fr 1fr 36px; gap:8px; align-items:center; margin-bottom:8px; }
-  .rowhead { font-size:.8rem; color:var(--muted); margin-bottom:4px; }
-  .srow .idx::before { counter-increment:n; content:counter(n); color:var(--muted); font-size:.9rem; }
-  .formbtns { display:grid; grid-template-columns:1fr 1.5fr; gap:10px; margin-top:4px; }
-  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
-  .del { text-align:right; margin-top:8px; }
+  .iconbtn { background:transparent; border:0; padding:6px; border-radius:10px; cursor:pointer;
+    color:var(--clay); display:grid; place-items:center; }
+  .iconbtn svg { display:block; }
+
+  /* ── 部位 ── */
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 14px; }
+  .tabs button { font:inherit; font-size:14px; font-weight:500; cursor:pointer; padding:8px 14px;
+    border-radius:999px; background:var(--card); border:1px solid var(--edge); color:var(--clay);
+    -webkit-backdrop-filter:blur(var(--blur)); backdrop-filter:blur(var(--blur)); }
+  .tabs button.active { background:var(--accent); border-color:var(--accent); color:var(--on); font-weight:600; }
+
+  /* ── 动作卡片 ── */
+  #list { display:flex; flex-direction:column; gap:12px; padding:0 16px; }
+  .card { background:var(--card); border:1px solid var(--edge); border-radius:var(--r);
+    -webkit-backdrop-filter:blur(var(--blur)); backdrop-filter:blur(var(--blur)); }
+  .empty { padding:16px; text-align:center; color:var(--clay); font-size:14px; }
+  details.ex > summary { list-style:none; cursor:pointer; display:block; padding:14px 16px; }
+  details.ex > summary::-webkit-details-marker { display:none; }
+  .exhead { display:flex; align-items:center; gap:8px; }
+  .exname { flex:1 1 auto; min-width:0; font-size:17px; font-weight:500; line-height:24px; }
+  .badge { flex:none; font-size:12px; line-height:16px; color:var(--brass);
+    border:1px solid var(--brass); border-radius:999px; padding:2px 8px; }
+  .nolog { flex:none; font-size:12px; color:var(--clay); }
+  .chev { flex:none; width:8px; height:8px; margin:-4px 2px 0 2px; transition:transform .18s;
+    border-right:2px solid var(--clay); border-bottom:2px solid var(--clay); transform:rotate(45deg); }
+  details[open] > summary .chev { transform:rotate(-135deg); margin-top:4px; }
+  /* 上次训练的每一组：不展开就能扫到，所以数字是主角 */
+  .sets { display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; margin-top:10px; }
+  .sets b { font-size:20px; font-weight:600; line-height:24px; }
+  .sets i { font-style:normal; font-size:12px; color:var(--clay); }
+  /* 一位数的组挨在一起会读成一个大数（5 7 7 7 像 5777），用逗号断开 */
+  .sets b:not(:last-of-type)::after,
+  .day .nums b:not(:last-of-type)::after { content:","; font-weight:400; color:var(--clay); }
+  .meta { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12px; color:var(--clay); }
+  .meta .d { font-size:13px; font-weight:500; }
+
+  .body { border-top:1px solid var(--edge); padding:14px 16px 16px;
+    display:flex; flex-direction:column; gap:14px; }
+  .primary { width:100%; font:inherit; font-size:15px; font-weight:500; cursor:pointer;
+    background:var(--accent); color:var(--on); border:0; border-radius:999px; padding:14px 20px; }
+  .secondary { width:100%; font:inherit; font-size:15px; cursor:pointer; background:transparent;
+    color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:12px 20px; }
+  .ghost { background:transparent; border:0; cursor:pointer; font:inherit; color:var(--clay);
+    padding:6px 8px; border-radius:8px; }
+  .ghost:hover { color:var(--accent); }
+  .del { text-align:right; }
   .del button { color:var(--danger); }
+
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center; }
+  .stats div { background:var(--surface); border-radius:8px; padding:10px; }
+  .stats span { display:block; font-size:12px; line-height:16px; color:var(--clay); }
+  .stats strong { font-size:22px; font-weight:700; line-height:26px; }
+  .stats em { font-style:normal; font-size:12px; color:var(--clay); margin-left:3px; }
+
+  .trend svg { display:block; width:100%; height:auto; }
+  .range { display:flex; justify-content:space-between; margin-top:6px; font-size:13px; color:var(--clay); }
+
+  .history { display:flex; flex-direction:column; }
+  .day { border-top:1px solid var(--edge); }
+  .day:first-child { border-top:0; }
+  .day > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:12px 0; }
+  .day > summary::-webkit-details-marker { display:none; }
+  .dchev { flex:none; width:7px; height:7px; transition:transform .18s;
+    border-right:2px solid var(--clay); border-bottom:2px solid var(--clay); transform:rotate(-45deg); }
+  .day[open] > summary .dchev { transform:rotate(45deg); }
+  .day .d { font-size:13px; font-weight:500; }
+  .day .nums { margin-left:auto; display:flex; align-items:baseline; gap:5px; font-size:13px; color:var(--clay); }
+  .day .nums i { font-style:normal; font-size:12px; }
+  .set { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:8px 0 8px 15px; font-size:14px; border-top:1px dashed var(--edge); }
+  .pr { color:var(--brass); font-size:12px; margin-left:6px; }
+
+  .addex { width:100%; font:inherit; font-size:15px; cursor:pointer; background:transparent;
+    color:var(--accent); border:1px dashed var(--accent); border-radius:var(--r); padding:15px; }
+  .addform { display:flex; gap:8px; }
+  .addform .primary { width:auto; white-space:nowrap; padding:12px 18px; }
+
+  /* ── 弹层：记录表单 / 存档菜单 ── */
+  dialog { border:0; padding:0; color:var(--ink); background:transparent; max-width:none; max-height:none; }
+  /* ::backdrop 在旧版浏览器里拿不到 :root 的自定义属性，所以用不吃色相的中性黑 */
+  dialog::backdrop { background:rgba(0,0,0,.55); }
+  #menu::backdrop, #theme::backdrop { background:rgba(0,0,0,.35); }
+
+  #sheet { position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:480px; margin:0 auto; }
+  .sheetin { background:var(--sheet); border-radius:20px 20px 0 0;
+    -webkit-backdrop-filter:blur(30px); backdrop-filter:blur(30px);
+    padding:10px 20px calc(env(safe-area-inset-bottom,0px) + 24px);
+    max-height:92svh; overflow:auto; }
+  #sheet[open] { animation:up .22s cubic-bezier(.2,.8,.2,1); }
+  @keyframes up { from { transform:translateY(18px); opacity:0 } to { transform:none; opacity:1 } }
+  .grab { width:40px; height:4px; border-radius:2px; background:var(--edge); margin:0 auto 8px; }
+  .sheettop { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .sheettop h2 { flex:1 1 auto; min-width:0; margin:0; font-size:20px; font-weight:700; line-height:28px; }
+
+  label { display:flex; flex-direction:column; gap:6px; min-width:0; font-size:12px; color:var(--clay); }
+  input, select { width:100%; min-width:0; font:inherit; font-size:15px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--edge); border-radius:8px; padding:11px 12px; }
+  input[type=date] { -webkit-appearance:none; appearance:none; min-height:44px; text-align:left; }
+  input[type=date]::-webkit-date-and-time-value { text-align:left; }
+  .fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .rowhead, .srow { display:grid; grid-template-columns:24px 1fr 1fr 34px; gap:10px; align-items:center; }
+  .rowhead { margin-bottom:8px; font-size:12px; color:var(--clay); }
+  .setrows { counter-reset:n; display:flex; flex-direction:column; gap:8px; }
+  .srow .idx { text-align:center; font-size:13px; color:var(--clay); }
+  .srow .idx::before { counter-increment:n; content:counter(n); }
+  .srow input { font-size:20px; font-weight:600; padding:9px 12px; }
+  .hint { margin:8px 0 0 34px; font-size:12px; color:var(--clay); }
+  .sheetbtns { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+
+  #menu, #theme { position:fixed; top:calc(env(safe-area-inset-top,0px) + 58px); bottom:auto; left:auto;
+    right:max(16px,calc((100vw - 480px) / 2 + 16px)); margin:0;
+    background:var(--sheet); border:1px solid var(--edge); border-radius:var(--r);
+    -webkit-backdrop-filter:blur(30px); backdrop-filter:blur(30px);
+    box-shadow:0 10px 28px rgba(0,0,0,.45); }
+  #menu { width:228px; padding:6px 0; }
+  #theme { width:260px; padding:14px 16px 16px; }
+  #menu button { display:flex; align-items:center; gap:12px; width:100%; cursor:pointer;
+    background:transparent; border:0; color:var(--ink); font:inherit; text-align:left; padding:12px 16px; }
+  #menu button + button { border-top:1px solid var(--edge); }
+  #menu svg { flex:none; color:var(--clay); }
+  #menu b { display:block; font-size:15px; font-weight:500; line-height:20px; }
+  #menu em { display:block; font-style:normal; font-size:12px; line-height:16px; color:var(--clay); margin-top:2px; }
+
+  /* 顶栏的配色钮本身就是当前主色的色块，顺便当预览 */
+  .swatch span { display:block; width:20px; height:20px; border-radius:50%;
+    background:var(--accent); border:2px solid var(--edge); }
+  .themetop { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .themetop b { flex:1 1 auto; font-size:15px; font-weight:500; }
+  .hue { -webkit-appearance:none; appearance:none; width:100%; height:26px;
+    background:transparent; border:0; padding:0; cursor:pointer; }
+  /* 滑轨直接用结果色上色：滑到哪里就是哪个主色 */
+  .hue::-webkit-slider-runnable-track { height:12px; border-radius:999px;
+    background:linear-gradient(to right, oklch(76% .14 0), oklch(76% .14 45), oklch(76% .14 90),
+      oklch(76% .14 135), oklch(76% .14 180), oklch(76% .14 225), oklch(76% .14 270),
+      oklch(76% .14 315), oklch(76% .14 360)); }
+  .hue::-moz-range-track { height:12px; border-radius:999px;
+    background:linear-gradient(to right, oklch(76% .14 0), oklch(76% .14 45), oklch(76% .14 90),
+      oklch(76% .14 135), oklch(76% .14 180), oklch(76% .14 225), oklch(76% .14 270),
+      oklch(76% .14 315), oklch(76% .14 360)); }
+  .hue::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+    background:var(--accent); border:3px solid #fff; margin-top:-5px; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .hue::-moz-range-thumb { width:22px; height:22px; border-radius:50%; box-sizing:border-box;
+    background:var(--accent); border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .presets { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .presets button { width:30px; height:30px; border-radius:50%; cursor:pointer;
+    border:2px solid var(--edge); padding:0; }
+
+  @media (prefers-reduced-motion:reduce) {
+    #sheet[open] { animation:none; }
+    .chev, .dchev { transition:none; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1><span class="logo"></span>健身记录<span class="unitsw" id="unitsw"><button data-unit="lb">LB</button><button data-unit="kg">KG</button></span></h1>
+  <header class="topbar">
+    <span class="logo"></span>
+    <h1>健身记录</h1>
+    <span class="unitsw" id="unitsw"><button data-unit="lb">LB</button><button data-unit="kg">KG</button></span>
+    <button class="iconbtn swatch" id="hueBtn" aria-haspopup="dialog" aria-label="配色"><span></span></button>
+    <button class="iconbtn" id="moreBtn" aria-haspopup="menu" aria-label="存档与导入">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </header>
 
-  <div class="tabs" id="tabs"></div>
-  <form class="card addrow" id="addEx">
-    <input id="newEx" placeholder="新增动作，例如：杠铃卧推" autocomplete="off">
-    <button type="submit">＋ 新增</button>
-  </form>
-
+  <nav class="tabs" id="tabs"></nav>
   <div id="list"></div>
-
-
-  <div class="backup">
-    <button class="ghost" id="export">存档</button>
-    <button class="ghost" id="import">导入</button>
-    <input type="file" id="file" accept="application/json,.json" hidden>
-  </div>
 </main>
+
+<dialog id="sheet" aria-label="记录本次训练"></dialog>
+
+<dialog id="theme" aria-label="配色">
+  <div class="themein">
+    <div class="themetop">
+      <b>配色</b>
+      <button type="button" class="iconbtn" data-close aria-label="关闭">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <input type="range" class="hue" id="hue" min="0" max="360" step="1" aria-label="色相">
+    <div class="presets" id="presets"></div>
+  </div>
+</dialog>
+
+<dialog id="menu" aria-label="存档与导入">
+  <div class="menuin">
+    <button type="button" data-act="export">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      <span><b>存档</b><em>存成 JSON 档案</em></span>
+    </button>
+    <button type="button" data-act="import">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9m0 0 4 4m-4-4-4 4M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+      <span><b>导入</b><em>会覆盖现有全部记录</em></span>
+    </button>
+  </div>
+</dialog>
+
+<input type="file" id="file" accept="application/json,.json" hidden>
 
 <script>
 const $ = (id) => document.getElementById(id);
 const CATS = ['胸', '肩', '背', '手臂', '腿', '核心'];
+
+// 主色相。整套色票由它推导，所以只需要存一个数字
+const DEF_HUE = 4; // oklch 色相 4 就是原本那个粉 #e8628a
+const HUES = [[4, '樱粉'], [35, '砖橙'], [95, '麦金'], [152, '松绿'], [196, '青碧'], [240, '湖蓝'], [285, '靛紫'], [325, '品红']];
+const applyHue = (h) => document.documentElement.style.setProperty('--h', h);
+// 先用本地镜像上色：不然 JSON 回来之前会先闪一下默认的绿
+try { applyHue(+localStorage.getItem('hue') || DEF_HUE); } catch {}
 let data = { exercises: {}, records: [] };
 let cat = localStorage.getItem('cat') || CATS[0];
 let unit = localStorage.getItem('unit') === 'kg' ? 'kg' : 'lb';
@@ -113,36 +288,68 @@ const LB_PER_KG = 2.20462262;
 const lbOf = (r) => (r.unit === 'kg' ? r.weight * LB_PER_KG : r.weight); // 比较大小统一换成 lb
 // 记录保留输入时的单位，显示时才换算，来回切换不会累积误差
 const dw = (r) => (r.unit === 'kg') === (unit === 'kg') ? r.weight : +(unit === 'kg' ? r.weight / LB_PER_KG : r.weight * LB_PER_KG).toFixed(1);
-const opened = new Set(); // 当前展开的 "部位|动作"
+const opened = new Set(); // 当前展开的 "部位|动作" 与 "部位|动作|日期"
+let sheetEx = null;       // 记录表单当前对应的动作
 
 const today = () => {
   const d = new Date();
   return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 };
+const md = (d) => d.slice(5).replace('-', '/'); // 2026-10-15 -> 10/15
 
 function normalize() {
   data.records ||= [];
   data.exercises ||= {};
+  data.modes ||= {}; // "部位|动作" -> 'bw'(自重) | 'w'(填重量)，缺省为填重量
+  data.theme ||= {};
+  if (!Number.isFinite(data.theme.hue)) data.theme.hue = DEF_HUE;
   CATS.forEach((c) => (data.exercises[c] ||= []));
 }
 
-// 优先使用服务器的 data.json；连不上时静默改用浏览器本地存储
+// 色相跟记录一起存在 JSON 里，所以存档 / 导入会一并带走配色
+function useTheme() {
+  applyHue(data.theme.hue);
+  $('hue').value = data.theme.hue;
+  try { localStorage.setItem('hue', data.theme.hue); } catch {}
+}
+
+function setHue(h) {
+  applyHue(h);
+  if (data.theme.hue === h) return;
+  data.theme.hue = h;
+  try { localStorage.setItem('hue', h); } catch {}
+  save();
+}
+
+const modeOf = (name) => (data.modes[cat + '|' + name] === 'bw' ? 'bw' : 'w');
+
+// 有 server.js 就用它的 data.json；纯静态托管（GitHub Pages）下第一次就会失败，
+// 之后不再重试——否则每存一组都要先白等一次网络超时
+let useServer = true;
+
 async function load() {
   try {
-    data = await (await fetch('/api/data')).json();
+    const r = await fetch('api/data');
+    if (!r.ok) throw 0;
+    data = await r.json();
   } catch {
+    useServer = false;
     try { data = JSON.parse(localStorage.getItem('data')) || data; } catch {}
   }
   normalize();
+  useTheme();
   render();
 }
 
+// 先落地到浏览器再同步服务器：网络慢或根本没有服务器时，记录都不会丢
 async function save() {
+  try { localStorage.setItem('data', JSON.stringify(data)); } catch {}
+  if (!useServer) return;
   try {
-    const r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const r = await fetch('api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (!r.ok) throw 0;
   } catch {
-    try { localStorage.setItem('data', JSON.stringify(data)); } catch {}
+    useServer = false;
   }
 }
 
@@ -151,36 +358,131 @@ function esc(s) {
 }
 
 const recsOf = (name) => data.records.filter((r) => r.category === cat && r.exercise === name);
+const sorted = (name) => recsOf(name).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
 
 function render() {
   document.querySelectorAll('#unitsw button').forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
   $('tabs').innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === cat ? 'active' : ''}">${c}</button>`).join('');
   const list = data.exercises[cat];
-  $('list').innerHTML = list.length ? list.map(exerciseHTML).join('') : '<div class="empty">这个部位还没有动作，在上方新增</div>';
+  $('list').innerHTML =
+    (list.length ? list.map(exerciseHTML).join('') : '<div class="card empty">这个部位还没有动作</div>') +
+    '<div id="addwrap"><button class="addex" id="addBtn">＋ 新增动作</button></div>';
+}
+
+// 一次训练的每组数值。纯自重没有重量可列，改列次数；自重加了杠片就标成 +10
+function summaryRow(ss) {
+  const anyW = ss.some((s) => s.weight > 0);
+  if (!anyW && ss.every((s) => s.bw)) return { nums: ss.map((s) => String(s.reps)), unit: '次' };
+  return { nums: ss.map((s) => (s.bw ? (s.weight ? '+' + dw(s) : '自重') : String(dw(s)))), unit };
+}
+
+// 这次训练有没有打破纪录：有任何重量就比重量，纯自重才比次数
+function hasBest(recs, ss) {
+  const anyW = recs.some((r) => r.weight > 0);
+  const best = anyW ? Math.max(...recs.map(lbOf)) : Math.max(...recs.map((r) => r.reps));
+  return anyW ? ss.some((s) => lbOf(s) === best) : ss.some((s) => s.reps === best);
 }
 
 function exerciseHTML(name) {
-  const recs = recsOf(name).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const recs = sorted(name);
+  const bw = modeOf(name) === 'bw';
   const last = recs.at(-1);
-  const key = esc(cat + '|' + name);
+  const ss = last ? recs.filter((r) => r.date === last.date) : [];
+  const row = last ? summaryRow(ss) : null;
+  const n = ss.reduce((a, s) => a + (s.sets || 1), 0);
   return `
-  <details class="card" data-key="${key}" data-ex="${esc(name)}" ${opened.has(cat + '|' + name) ? 'open' : ''}>
-    <summary><span>${esc(name)}</span><span class="meta">${last ? `最近 ${sessionSummary(recs.filter((r) => r.date === last.date))}` : '尚无记录'}</span></summary>
+  <details class="card ex" data-ex="${esc(name)}" ${opened.has(cat + '|' + name) ? 'open' : ''}>
+    <summary>
+      <div class="exhead">
+        <span class="exname">${esc(name)}</span>
+        ${last && hasBest(recs, ss) ? '<span class="badge">新纪录</span>' : ''}
+        ${last ? '' : '<span class="nolog">还没记录，点开记一组</span>'}
+        <span class="chev"></span>
+      </div>
+      ${last ? `
+      <div class="sets">${row.nums.map((v) => `<b>${esc(v)}</b>`).join('')}<i>${row.unit}</i></div>
+      <div class="meta"><span class="d">${md(last.date)}</span><span>${n} 组</span></div>` : ''}
+    </summary>
     <div class="body">
-      <form class="setform" data-ex="${esc(name)}">
-        <label class="date">日期<input name="date" type="date" required value="${today()}"></label>
-        <div class="rowhead"><span></span><span>重量 (${unit})</span><span>次数</span><span></span></div>
-        <div class="setrows">${initialRows(recs).map((s) => setRowHTML(s.weight, s.reps)).join('')}</div>
-        <div class="formbtns">
-          <button type="button" class="secondary" data-addrow>＋ 加一组</button>
-          <button type="submit">保存本次训练</button>
-        </div>
-      </form>
-      ${recs.length ? progressHTML(recs) + historyHTML(recs) : ''}
+      <button type="button" class="primary" data-log="${esc(name)}">记录本次训练</button>
+      ${recs.length ? statsHTML(recs, bw) + trendHTML(recs) + historyHTML(recs, bw) : ''}
       <div class="del"><button class="ghost" data-delex="${esc(name)}">删除此动作</button></div>
     </div>
   </details>`;
 }
+
+function statsHTML(recs, bw) {
+  const anyW = recs.some((r) => r.weight > 0);
+  const u = anyW ? unit : '次';
+  const max = anyW ? Math.max(...recs.map(dw)) : Math.max(...recs.map((r) => r.reps));
+  const dates = [...new Set(recs.map((r) => r.date))].sort();
+  const gap = dates.length > 1 ? Math.round((Date.parse(dates.at(-1)) - Date.parse(dates.at(-2))) / 864e5) : null;
+  const sets = recs.reduce((n, r) => n + (r.sets || 1), 0);
+  return `<div class="stats">
+    <div><span>距上次</span><strong>${gap === null ? '首次' : gap}</strong>${gap === null ? '' : '<em>天</em>'}</div>
+    <div><span>${anyW ? (bw ? '最大加重' : '最大重量') : '最多次数'}</span><strong>${max}</strong><em>${u}</em></div>
+    <div><span>总组数</span><strong>${sets}</strong></div>
+  </div>`;
+}
+
+// 每天取最大值画折线。自重＝加重 0，所以只要出现过重量就一律看重量，
+// 每一天都会进到图里（不会因为某天只做纯自重就被挑掉）；完全没重量才看次数。
+function trendHTML(recs) {
+  const anyW = recs.some((r) => r.weight > 0);
+  const val = (r) => (anyW ? dw(r) : r.reps);
+  const perDay = {};
+  recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, val(r)); });
+  const pts = Object.entries(perDay).sort((a, b) => a[0].localeCompare(b[0]));
+  if (pts.length < 2) return ''; // 一个点画不出趋势
+  const W = 326, H = 104, PAD = 12, TOP = 14, BOT = 14;
+  const vals = pts.map((p) => p[1]);
+  const mn = Math.min(...vals), mx = Math.max(...vals), span = (mx - mn) || 1;
+  const x = (i) => +(PAD + i * (W - PAD * 2) / (pts.length - 1)).toFixed(1);
+  const y = (v) => +(TOP + (1 - (v - mn) / span) * (H - TOP - BOT)).toFixed(1);
+  const u = anyW ? unit : '次';
+  const line = pts.map((p, i) => `${x(i)},${y(p[1])}`).join(' ');
+  const area = `M${x(0)} ${y(pts[0][1])} ` + pts.slice(1).map((p, i) => `L${x(i + 1)} ${y(p[1])}`).join(' ') +
+    ` L${x(pts.length - 1)} ${H - 4} L${x(0)} ${H - 4} Z`;
+  return `<div class="trend">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${anyW ? '重量' : '次数'}趋势：${mn} 到 ${mx} ${u}">
+      <path d="${area}" fill="var(--accent)" fill-opacity=".14"/>
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${pts.map((p, i) => {
+        const lastPt = i === pts.length - 1;
+        return `<circle cx="${x(i)}" cy="${y(p[1])}" r="${lastPt ? 5.5 : 3.5}" fill="${lastPt ? 'var(--accent)' : 'var(--card-solid)'}"${lastPt ? '' : ' stroke="var(--accent)" stroke-width="2"'}><title>${p[0]}: ${p[1]} ${u}</title></circle>`;
+      }).join('')}
+    </svg>
+    <div class="range"><span>${md(pts[0][0])}</span><span>${md(pts.at(-1)[0])}</span></div>
+  </div>`;
+}
+
+// 一组的显示：自重 / 自重+10 lb / 95 lb
+const setLabel = (s) => (s.bw ? (s.weight ? `自重+${dw(s)} ${unit}` : '自重') : `${dw(s)} ${unit}`);
+
+function historyHTML(recs, bw) {
+  const anyW = recs.some((r) => r.weight > 0);
+  const best = anyW ? Math.max(...recs.map(lbOf)) : Math.max(...recs.map((r) => r.reps));
+  const ex = recs[0].exercise;
+  const byDate = {};
+  recs.forEach((r) => (byDate[r.date] ||= []).push(r));
+  return '<div class="history">' + Object.keys(byDate).sort().reverse().map((date) => {
+    const ss = byDate[date];
+    const key = `${cat}|${ex}|${date}`;
+    const row = summaryRow(ss);
+    return `
+    <details class="day" data-dkey="${esc(key)}" ${opened.has(key) ? 'open' : ''}>
+      <summary>
+        <span class="dchev"></span><span class="d">${md(date)}</span>
+        <span class="nums">${row.nums.map((v) => `<b>${esc(v)}</b>`).join('')}<i>${row.unit}</i></span>
+      </summary>
+      ${ss.map((s) => `
+        <div class="set"><span>${setLabel(s)} × ${s.reps} 次${(s.sets || 1) > 1 ? ` × ${s.sets} 组` : ''}${(anyW ? lbOf(s) === best : s.reps === best) ? `<span class="pr">${anyW ? (bw ? '最大加重' : '最大重量') : '最多次数'}</span>` : ''}</span>
+        <button class="ghost" data-del="${s.id}" aria-label="删除这组">✕</button></div>`).join('')}
+    </details>`;
+  }).join('') + '</div>';
+}
+
+/* ── 记录表单（底部弹层） ── */
 
 // 预填：沿用上次训练的每一组（递增 / 递减组可直接微调）；没有记录则给 4 个空组
 function initialRows(recs) {
@@ -188,68 +490,71 @@ function initialRows(recs) {
   const lastDate = recs.at(-1).date;
   const rows = [];
   recs.filter((r) => r.date === lastDate).forEach((r) => {
-    for (let i = 0; i < (r.sets || 1); i++) rows.push({ weight: dw(r), reps: r.reps });
+    for (let i = 0; i < (r.sets || 1); i++) rows.push({ weight: r.weight ? dw(r) : '', reps: r.reps });
   });
   return rows;
 }
 
-function setRowHTML(weight = '', reps = '') {
+// 自重模式的重量栏是「额外加重」，留空代表纯自重，所以不设 required
+function setRowHTML(weight = '', reps = '', bw = false) {
   return `<div class="srow">
     <span class="idx"></span>
-    <input name="weight" type="number" step="0.5" min="0" required inputmode="decimal" placeholder="${unit}" value="${weight}">
-    <input name="reps" type="number" step="1" min="1" required inputmode="numeric" placeholder="次" value="${reps}">
-    <button type="button" class="ghost" data-delrow title="移除此组">✕</button>
+    <input name="weight" type="number" step="0.5" min="0" ${bw ? '' : 'required '}inputmode="decimal" placeholder="${bw ? '自重' : unit}" value="${weight}" aria-label="${bw ? '加重' : '重量'}">
+    <input name="reps" type="number" step="1" min="1" required inputmode="numeric" placeholder="次" value="${reps}" aria-label="次数">
+    <button type="button" class="ghost" data-delrow aria-label="移除此组">✕</button>
   </div>`;
 }
 
-// 一次训练的摘要，如 "4 组 · 25 / 25 / 25 / 20 lb"，收起的卡片与日期列共用
-function sessionSummary(ss) {
-  const n = ss.reduce((a, s) => a + (s.sets || 1), 0);
-  return `${n} 组 · ${ss.map(dw).join(' / ')} ${unit}`;
-}
-
-function historyHTML(recs) {
-  const best = Math.max(...recs.map(lbOf));
-  const byDate = {};
-  recs.forEach((r) => (byDate[r.date] ||= []).push(r));
-  return Object.keys(byDate).sort().reverse().map((date) => {
-    const ss = byDate[date];
-    const key = esc(`${cat}|${recs[0].exercise}|${date}`);
-    return `
-    <details class="day" data-dkey="${key}" ${opened.has(`${cat}|${recs[0].exercise}|${date}`) ? 'open' : ''}>
-      <summary><span>${date}</span><span class="meta">${sessionSummary(ss)}</span></summary>
-      ${ss.map((s) => `
-        <div class="set"><span>${dw(s)} ${unit} × ${s.reps} 次${(s.sets || 1) > 1 ? ` × ${s.sets} 组` : ''}${lbOf(s) === best ? '<span class="pr">🏆 最大重量</span>' : ''}</span>
-        <button class="ghost" data-del="${s.id}" title="删除">✕</button></div>`).join('')}
-    </details>`;
-  }).join('');
-}
-
-function progressHTML(recs) {
-  // 每天取最大重量画折线图
-  const perDay = {};
-  recs.forEach((r) => { perDay[r.date] = Math.max(perDay[r.date] || 0, dw(r)); });
-  const pts = Object.entries(perDay);
-  const ws = pts.map((p) => p[1]);
-  const min = Math.min(...ws), max = Math.max(...ws), span = max - min || 1;
-  const x = (i) => 30 + (pts.length === 1 ? 270 : (i * 540) / (pts.length - 1));
-  const y = (w) => 150 - ((w - min) / span) * 120;
-  const line = pts.map((p, i) => `${x(i)},${y(p[1])}`).join(' ');
-  return `
-    <div class="stats">
-      <div><span>最近重量</span><strong>${dw(recs.at(-1))} ${unit}</strong></div>
-      <div><span>最大重量</span><strong>${max} ${unit}</strong></div>
-      <div><span>总组数</span><strong>${recs.reduce((n, r) => n + (r.sets || 1), 0)}</strong></div>
+// state 用于切换「自重 / 填重量」时保住已经打好的内容
+function renderSheet(state) {
+  const name = sheetEx;
+  const bw = modeOf(name) === 'bw';
+  const rows = state ? state.rows : initialRows(sorted(name));
+  const date = state ? state.date : today();
+  $('sheet').innerHTML = `
+  <div class="sheetin">
+    <div class="grab"></div>
+    <div class="sheettop">
+      <h2>${esc(name)}</h2>
+      <button type="button" class="iconbtn" data-close aria-label="关闭">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
     </div>
-    <svg viewBox="0 0 600 180" aria-label="重量趋势图">
-      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
-      ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="4" fill="var(--accent)"><title>${p[0]}: ${p[1]} ${unit}</title></circle>`).join('')}
-      <text x="4" y="${y(max) + 4}" font-size="11" fill="var(--muted)">${max}</text>
-      <text x="4" y="${y(min) + 4}" font-size="11" fill="var(--muted)">${min}</text>
-      <text x="30" y="175" font-size="11" fill="var(--muted)">${pts[0][0]}</text>
-      <text x="570" y="175" font-size="11" fill="var(--muted)" text-anchor="end">${pts.at(-1)[0]}</text>
-    </svg>`;
+    <form id="setForm">
+      <div class="fields">
+        <label>日期<input name="date" type="date" required value="${date}"></label>
+        <label>方式<select name="mode">
+          <option value="w"${bw ? '' : ' selected'}>填重量</option>
+          <option value="bw"${bw ? ' selected' : ''}>自重</option>
+        </select></label>
+      </div>
+      <div class="rowhead"><span></span><span>${bw ? '加重' : '重量'} (${unit})</span><span>次数</span><span></span></div>
+      <div class="setrows">${rows.map((s) => setRowHTML(s.weight, s.reps, bw)).join('')}</div>
+      ${bw ? '<div class="hint">加重留空＝纯自重；加了杠片就填上去</div>' : ''}
+      <div class="sheetbtns">
+        <button type="button" class="secondary" data-addrow>＋ 加一组</button>
+        <button type="submit" class="primary">保存本次训练</button>
+      </div>
+    </form>
+  </div>`;
 }
+
+const sheetState = () => ({
+  date: $('sheet').querySelector('[name=date]').value,
+  rows: [...$('sheet').querySelectorAll('.srow')].map((r) => ({
+    weight: r.querySelector('[name=weight]').value,
+    reps: r.querySelector('[name=reps]').value,
+  })),
+});
+
+function openSheet(name) {
+  sheetEx = name;
+  renderSheet();
+  $('sheet').showModal();
+  $('sheet').querySelector('.srow input')?.focus();
+}
+
+/* ── 事件 ── */
 
 $('unitsw').addEventListener('click', (e) => {
   const b = e.target.closest('button');
@@ -268,7 +573,7 @@ $('tabs').addEventListener('click', (e) => {
   render();
 });
 
-// 记住每个动作的展开 / 收起状态（toggle 事件不会冒泡，所以用 capture）
+// 记住每个动作 / 每个日期的展开状态（toggle 事件不会冒泡，所以用 capture）
 $('list').addEventListener('toggle', (e) => {
   const d = e.target;
   if (!d.dataset || !(d.dataset.ex || d.dataset.dkey)) return;
@@ -276,43 +581,14 @@ $('list').addEventListener('toggle', (e) => {
   d.open ? opened.add(k) : opened.delete(k);
 }, true);
 
-$('addEx').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = $('newEx').value.trim();
-  if (!name) return;
-  if (!data.exercises[cat].includes(name)) { data.exercises[cat].push(name); save(); }
-  $('newEx').value = '';
-  opened.add(cat + '|' + name);
-  render();
-  const f = [...document.querySelectorAll('.setform')].find((f) => f.dataset.ex === name);
-  if (f) { f.scrollIntoView({ block: 'center' }); f.querySelector('input[name=weight]').focus(); }
-});
-
-$('list').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const f = e.target, name = f.dataset.ex;
-  const base = Date.now();
-  [...f.querySelectorAll('.srow')].forEach((row, i) => {
-    const [w, r] = row.querySelectorAll('input');
-    data.records.push({ id: base + i, date: f.date.value, category: cat, exercise: name, weight: +w.value, unit, reps: +r.value, sets: 1 });
-  });
-  save();
-  render();
-  const nf = [...document.querySelectorAll('.setform')].find((x) => x.dataset.ex === name);
-  if (nf) nf.querySelector('.srow input').focus();
-});
-
 $('list').addEventListener('click', (e) => {
   const t = e.target.closest('button');
   if (!t) return;
-  if ('addrow' in t.dataset) {
-    const box = t.closest('form').querySelector('.setrows');
-    const prev = box.lastElementChild?.querySelectorAll('input');
-    box.insertAdjacentHTML('beforeend', setRowHTML(prev ? prev[0].value : '', prev ? prev[1].value : ''));
-    box.lastElementChild.querySelector('input').focus();
-  } else if ('delrow' in t.dataset) {
-    const row = t.closest('.srow');
-    if (row.parentElement.children.length > 1) row.remove();
+  if (t.id === 'addBtn') {
+    $('addwrap').innerHTML = '<form class="addform" id="addForm"><input id="newEx" placeholder="动作名称，例如：杠铃卧推" autocomplete="off" required aria-label="动作名称"><button type="submit" class="primary">新增</button></form>';
+    $('newEx').focus();
+  } else if (t.dataset.log) {
+    openSheet(t.dataset.log);
   } else if (t.dataset.del) {
     if (!confirm('确定删除这组记录？')) return;
     data.records = data.records.filter((r) => r.id !== +t.dataset.del);
@@ -322,20 +598,103 @@ $('list').addEventListener('click', (e) => {
     if (!confirm(`确定删除「${name}」${n ? `与其 ${n} 笔记录` : ''}？`)) return;
     data.exercises[cat] = data.exercises[cat].filter((x) => x !== name);
     data.records = data.records.filter((r) => !(r.category === cat && r.exercise === name));
+    delete data.modes[cat + '|' + name];
     opened.delete(cat + '|' + name);
     save(); render();
   }
 });
 
-$('export').addEventListener('click', () => {
+$('list').addEventListener('submit', (e) => {
+  if (e.target.id !== 'addForm') return;
+  e.preventDefault();
+  const name = $('newEx').value.trim();
+  if (!name) return;
+  if (!data.exercises[cat].includes(name)) { data.exercises[cat].push(name); save(); }
+  opened.add(cat + '|' + name);
+  render();
+  [...document.querySelectorAll('.ex')].find((d) => d.dataset.ex === name)?.scrollIntoView({ block: 'center' });
+});
+
+$('sheet').addEventListener('click', (e) => {
+  if (!e.target.closest('.sheetin')) { $('sheet').close(); return; } // 点弹层外关闭
+  const t = e.target.closest('button');
+  if (!t) return;
+  if ('close' in t.dataset) {
+    $('sheet').close();
+  } else if ('addrow' in t.dataset) {
+    const form = $('setForm'), bw = form.mode.value === 'bw';
+    const box = form.querySelector('.setrows');
+    const prev = box.lastElementChild;
+    const pw = prev?.querySelector('[name=weight]'), pr = prev?.querySelector('[name=reps]');
+    box.insertAdjacentHTML('beforeend', setRowHTML(pw ? pw.value : '', pr ? pr.value : '', bw));
+    box.lastElementChild.querySelector('input').focus();
+  } else if ('delrow' in t.dataset) {
+    const row = t.closest('.srow');
+    if (row.parentElement.children.length > 1) row.remove();
+  }
+});
+
+// 自重 / 填重量 的选择按动作记住，下次打开沿用
+$('sheet').addEventListener('change', (e) => {
+  if (!e.target.closest('select[name=mode]')) return;
+  data.modes[cat + '|' + sheetEx] = e.target.value;
+  save();
+  renderSheet(sheetState()); // 保住已经打好的内容
+});
+
+$('sheet').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = e.target, name = sheetEx;
+  const bw = f.mode.value === 'bw';
+  const base = Date.now();
+  [...f.querySelectorAll('.srow')].forEach((row, i) => {
+    const w = row.querySelector('[name=weight]'), r = row.querySelector('[name=reps]');
+    const rec = { id: base + i, date: f.date.value, category: cat, exercise: name, weight: +w.value || 0, unit, reps: +r.value, sets: 1 };
+    if (bw) rec.bw = 1;
+    data.records.push(rec);
+  });
+  save();
+  opened.add(cat + '|' + name);
+  $('sheet').close();
+  render();
+});
+
+// 整套色票都由 oklch 推导，拿不到 oklch 的浏览器就没得调，直接收起这个钮
+if (!(window.CSS && CSS.supports && CSS.supports('color', 'oklch(50% .1 0)'))) {
+  $('hueBtn').hidden = true;
+} else {
+  $('presets').innerHTML = HUES.map(([h, n]) =>
+    `<button type="button" data-h="${h}" title="${n}" aria-label="${n}" style="background:oklch(76% .14 ${h})"></button>`).join('');
+}
+
+$('hueBtn').addEventListener('click', () => { $('hue').value = data.theme.hue; $('theme').showModal(); });
+$('hue').addEventListener('input', (e) => applyHue(+e.target.value));   // 拖动时只预览，不落盘
+$('hue').addEventListener('change', (e) => setHue(+e.target.value));    // 放手才存
+$('theme').addEventListener('close', () => setHue(+$('hue').value));    // 拖完直接点外面关掉也要存
+$('theme').addEventListener('click', (e) => {
+  if (!e.target.closest('.themein')) { $('theme').close(); return; }
+  if (e.target.closest('[data-close]')) { $('theme').close(); return; }
+  const p = e.target.closest('[data-h]');
+  if (p) { $('hue').value = p.dataset.h; setHue(+p.dataset.h); }
+});
+
+$('moreBtn').addEventListener('click', () => $('menu').showModal());
+$('menu').addEventListener('click', (e) => {
+  if (!e.target.closest('.menuin')) { $('menu').close(); return; }
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  $('menu').close();
+  if (b.dataset.act === 'export') doExport(); else $('file').click();
+});
+
+function doExport() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.download = 'workout-data.json';
   a.click();
   URL.revokeObjectURL(a.href);
-});
+}
 
-$('import').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', async () => {
   const file = $('file').files[0];
   $('file').value = '';
